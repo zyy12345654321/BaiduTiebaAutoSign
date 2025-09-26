@@ -46,7 +46,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
- #      - name: '开始签到'
- #        env:
- #          BDUSS: ${{ secrets.BDUSS }}
- #        run: python main.py
+      - name: '开始签到'
+        env:
+          BDUSS: ${{ secrets.BDUSS }}
+        run: python main.py
