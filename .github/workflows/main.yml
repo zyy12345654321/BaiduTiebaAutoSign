@@ -7,7 +7,7 @@ on:
   schedule:
     - cron: '0 21 * * *'
   # 推荐添加手动触发，方便您测试和立即运行
-  workflow_dispatch: 
+  workflow_dispatch:
  
 jobs:
   sign:
@@ -16,45 +16,38 @@ jobs:
       - name: '检测代码'
         uses: actions/checkout@v3
 
-      # --- START: 新增缓存 Python 环境步骤 ---
-      - name: '缓存Python环境'
-        id: cache-python # 为这个步骤设置一个ID，方便后续引用
-        uses: actions/cache@v4
-        with:
-          # 缓存路径：setup-python action 默认安装Python的位置
-          path: ~/.setup-python
-          # 缓存键：由操作系统和Python版本组成，确保唯一性
-          # 这样只要操作系统和Python版本不变，就可以复用这份缓存
-          key: ${{ runner.os }}-python-3.8
-      # --- END: 新增缓存 Python 环境步骤 ---
-
       - name: '初始化Python'
+        # 我们给这个步骤一个ID，这样后面就可以引用它的“产出”
+        id: setup-python
         uses: actions/setup-python@v4
         with:
           python-version: '3.8'
 
-      # --- START: 新增缓存 Pip 依赖步骤 ---
-      - name: '缓存Pip依赖'
-        id: cache-pip # 为这个步骤设置一个ID
+      # --- 这是最健壮的 Python 缓存方式 ---
+      - name: '缓存Python环境'
         uses: actions/cache@v4
         with:
-          # 缓存路径：Pip 的缓存目录
+          # 路径：不再写死，而是使用上一步“初始化Python”的输出变量
+          # 这会动态地获取到 Python 被实际安装或找到的路径
+          path: ${{ steps.setup-python.outputs.python-path }}
+          # 键：同样使用上一步的输出，确保键和实际版本完全对应
+          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/requirements.txt') }}
+          # 恢复键，只匹配操作系统和Python，作为备用
+          restore-keys: |
+            ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-
+
+      # --- Pip 缓存保持不变，它一直都是正确的 ---
+      - name: '缓存Pip依赖'
+        uses: actions/cache@v4
+        with:
           path: ~/.cache/pip
-          # 缓存键：由操作系统和 requirements.txt 文件的哈希值组成
-          # hashFiles('**/requirements.txt') 会自动计算文件内容哈希，
-          # 确保只有当依赖列表发生变化时才重新下载并更新缓存
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          # 恢复键：当精确键不匹配时，尝试匹配前缀，以恢复尽可能多的旧依赖
           restore-keys: |
             ${{ runner.os }}-pip-
-      # --- END: 新增缓存 Pip 依赖步骤 ---
 
       - name: '安装依赖包'
         run: |
-          # 升级 pip 到最新版本（良好的实践）
           python -m pip install --upgrade pip
-          # 安装 requirements.txt 中列出的所有依赖
-          # 注意：为了让缓存pip依赖生效，建议将 'requests' 写入 requirements.txt
           pip install -r requirements.txt
           
       - name: '开始签到'
