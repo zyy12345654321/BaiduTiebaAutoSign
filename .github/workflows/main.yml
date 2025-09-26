@@ -15,26 +15,22 @@ jobs:
       - name: '检测代码'
         uses: actions/checkout@v3
 
-      # --- START: 最终修正 ---
-      # 步骤 1: 首先尝试恢复 Python 环境缓存
+      # --- 最终修正：使用带通配符的精确路径 ---
       - name: '缓存Python环境'
-        id: cache-python # 依然给它一个ID
         uses: actions/cache@v4
         with:
-          # 我们需要指定一个 setup-python 会检查的、稳定的路径
-          path: /opt/hostedtoolcache/Python
-          # 键保持不变，但为了简单和稳定，可以只用版本号
+          # 路径：只缓存 3.8.x 版本的 Python 文件夹
+          # 这个 '*' 会匹配到具体的版本号，比如 3.8.18
+          path: /opt/hostedtoolcache/Python/3.8.*
+          # 键：保持简单，与版本号对应
           key: ${{ runner.os }}-python-3.8
-          # 恢复键也相应简化
           restore-keys: |
             ${{ runner.os }}-python-
 
-      # 步骤 2: 现在才运行初始化。它会检查上面恢复的缓存路径
       - name: '初始化Python'
         uses: actions/setup-python@v4
         with:
           python-version: '3.8'
-      # --- END: 最终修正 ---
 
       # Pip 缓存部分是完美的，保持原样
       - name: '缓存Pip依赖'
@@ -50,7 +46,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: '开始签到'
-        env:
-          BDUSS: ${{ secrets.BDUSS }}
-        run: python main.py
+ #      - name: '开始签到'
+ #        env:
+ #          BDUSS: ${{ secrets.BDUSS }}
+ #        run: python main.py
