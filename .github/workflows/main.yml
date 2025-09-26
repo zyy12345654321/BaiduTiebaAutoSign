@@ -6,7 +6,6 @@ on:
       - master
   schedule:
     - cron: '0 21 * * *'
-  # 推荐添加手动触发，方便您测试和立即运行
   workflow_dispatch:
  
 jobs:
@@ -16,27 +15,28 @@ jobs:
       - name: '检测代码'
         uses: actions/checkout@v3
 
+      # --- START: 最终修正 ---
+      # 步骤 1: 首先尝试恢复 Python 环境缓存
+      - name: '缓存Python环境'
+        id: cache-python # 依然给它一个ID
+        uses: actions/cache@v4
+        with:
+          # 我们需要指定一个 setup-python 会检查的、稳定的路径
+          path: /opt/hostedtoolcache/Python
+          # 键保持不变，但为了简单和稳定，可以只用版本号
+          key: ${{ runner.os }}-python-3.8
+          # 恢复键也相应简化
+          restore-keys: |
+            ${{ runner.os }}-python-
+
+      # 步骤 2: 现在才运行初始化。它会检查上面恢复的缓存路径
       - name: '初始化Python'
-        # 我们给这个步骤一个ID，这样后面就可以引用它的“产出”
-        id: setup-python
         uses: actions/setup-python@v4
         with:
           python-version: '3.8'
+      # --- END: 最终修正 ---
 
-      # --- 这是最健壮的 Python 缓存方式 ---
-      - name: '缓存Python环境'
-        uses: actions/cache@v4
-        with:
-          # 路径：不再写死，而是使用上一步“初始化Python”的输出变量
-          # 这会动态地获取到 Python 被实际安装或找到的路径
-          path: ${{ steps.setup-python.outputs.python-path }}
-          # 键：同样使用上一步的输出，确保键和实际版本完全对应
-          key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/requirements.txt') }}
-          # 恢复键，只匹配操作系统和Python，作为备用
-          restore-keys: |
-            ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-
-
-      # --- Pip 缓存保持不变，它一直都是正确的 ---
+      # Pip 缓存部分是完美的，保持原样
       - name: '缓存Pip依赖'
         uses: actions/cache@v4
         with:
