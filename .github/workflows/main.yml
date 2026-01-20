@@ -8,7 +8,7 @@ on:
     - cron: '0 21 * * *'
   workflow_dispatch:
 
-# 🟢 【新增 1】赋予 Action 写入仓库的权限，否则无法提交保活代码
+# 必须保留这个权限配置，为了允许提交代码
 permissions:
   contents: write
 
@@ -50,13 +50,12 @@ jobs:
           BDUSS: ${{ secrets.BDUSS }}
         run: python main.py
 
-      # 🟢 【新增 2】自动保活步骤
-      # 它的作用是：检测如果你超过 50 天没有提交代码，它会自动提交一次空代码
-      # 这样 GitHub 就会认为仓库是活跃的，不会再暂停你的定时任务
-      - name: '自动保活'
-        uses: gautamkrishnar/keepalive-workflow@v1
-        with:
-          # 默认是 50 天，你可以不用改。
-          # 当检测到距离上次提交超过 50 天时，会自动提交一次。
-          committer_username: github-actions[bot]
-          committer_email: 41898282+github-actions[bot]@users.noreply.github.com
+      # 🟢 【修改】使用原生 Git 命令进行保活（不依赖第三方插件）
+      # 逻辑：每次签到成功后，都会检查日期，如果需要则提交一个空更新
+      # 注意：这会在你的 Commit 记录里增加一些 "Auto-keepalive" 的记录，这是正常的
+      - name: '防止自动暂停'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit --allow-empty -m "Auto-keepalive"
+          git push
