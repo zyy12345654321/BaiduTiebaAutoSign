@@ -8,7 +8,6 @@ on:
     - cron: '0 21 * * *'
   workflow_dispatch:
 
-# 必须保留这个权限配置，为了允许提交代码
 permissions:
   contents: write
 
@@ -18,6 +17,9 @@ jobs:
     steps:
       - name: '检测代码'
         uses: actions/checkout@v3
+        with:
+          # 必须拉取完整的历史记录，否则无法计算距离上次提交的时间
+          fetch-depth: 0 
 
       - name: '缓存Python环境'
         uses: actions/cache@v4
@@ -50,12 +52,22 @@ jobs:
           BDUSS: ${{ secrets.BDUSS }}
         run: python main.py
 
-      # 🟢 【修改】使用原生 Git 命令进行保活（不依赖第三方插件）
-      # 逻辑：每次签到成功后，都会检查日期，如果需要则提交一个空更新
-      # 注意：这会在你的 Commit 记录里增加一些 "Auto-keepalive" 的记录，这是正常的
-      - name: '防止自动暂停'
+      # 🟢 【最终版】智能保活（原生代码版）
+      # 逻辑：获取最后一次提交时间 -> 和50天前的时间对比 -> 只有超时了才提交
+      - name: '智能保活'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git commit --allow-empty -m "Auto-keepalive"
-          git push
+          
+          # 获取最后一次提交的时间戳
+          last_commit_time=$(git log -1 --format=%ct)
+          # 获取50天前的时间戳
+          threshold_time=$(date -d "50 days ago" +%s)
+          
+          if [ $last_commit_time -lt $threshold_time ]; then
+            echo "距离上次提交已超过50天，执行自动保活..."
+            git commit --allow-empty -m "Auto-keepalive to prevent 60-day shutdown"
+            git push
+          else
+            echo "距离上次提交未满50天，跳过保活操作。"
+          fi
