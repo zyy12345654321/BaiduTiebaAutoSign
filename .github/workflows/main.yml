@@ -7,7 +7,11 @@ on:
   schedule:
     - cron: '0 21 * * *'
   workflow_dispatch:
- 
+
+# 🟢 【新增 1】赋予 Action 写入仓库的权限，否则无法提交保活代码
+permissions:
+  contents: write
+
 jobs:
   sign:
     runs-on: ubuntu-latest
@@ -15,14 +19,10 @@ jobs:
       - name: '检测代码'
         uses: actions/checkout@v3
 
-      # --- 最终修正：使用带通配符的精确路径 ---
       - name: '缓存Python环境'
         uses: actions/cache@v4
         with:
-          # 路径：只缓存 3.8.x 版本的 Python 文件夹
-          # 这个 '*' 会匹配到具体的版本号，比如 3.8.18
           path: /opt/hostedtoolcache/Python/3.8.*
-          # 键：保持简单，与版本号对应
           key: ${{ runner.os }}-python-3.8
           restore-keys: |
             ${{ runner.os }}-python-
@@ -32,7 +32,6 @@ jobs:
         with:
           python-version: '3.8'
 
-      # Pip 缓存部分是完美的，保持原样
       - name: '缓存Pip依赖'
         uses: actions/cache@v4
         with:
@@ -50,3 +49,14 @@ jobs:
         env:
           BDUSS: ${{ secrets.BDUSS }}
         run: python main.py
+
+      # 🟢 【新增 2】自动保活步骤
+      # 它的作用是：检测如果你超过 50 天没有提交代码，它会自动提交一次空代码
+      # 这样 GitHub 就会认为仓库是活跃的，不会再暂停你的定时任务
+      - name: '自动保活'
+        uses: gautamkrishnar/keepalive-workflow@v1
+        with:
+          # 默认是 50 天，你可以不用改。
+          # 当检测到距离上次提交超过 50 天时，会自动提交一次。
+          committer_username: github-actions[bot]
+          committer_email: 41898282+github-actions[bot]@users.noreply.github.com
