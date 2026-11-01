@@ -16,37 +16,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: '检测代码'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # 必须拉取完整的历史记录，否则无法计算距离上次提交的时间
-          fetch-depth: 0 
-
-      - name: '缓存Python环境'
-        uses: actions/cache@v4
-        with:
-          path: /opt/hostedtoolcache/Python/3.8.*
-          key: ${{ runner.os }}-python-3.8
-          restore-keys: |
-            ${{ runner.os }}-python-
+          fetch-depth: 0
 
       - name: '初始化Python'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.8'
-
-      - name: '缓存Pip依赖'
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.11'
+          cache: 'pip'          # setup-python v5 内置 pip 缓存，替代手动 cache 步骤
 
       - name: '安装依赖包'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
+
       - name: '开始签到'
         env:
           BDUSS: ${{ secrets.BDUSS }}
@@ -58,12 +43,12 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           # 获取最后一次提交的时间戳
           last_commit_time=$(git log -1 --format=%ct)
           # 获取50天前的时间戳
           threshold_time=$(date -d "50 days ago" +%s)
-          
+
           if [ $last_commit_time -lt $threshold_time ]; then
             echo "距离上次提交已超过50天，执行自动保活..."
             git commit --allow-empty -m "Auto-keepalive to prevent 60-day shutdown"
